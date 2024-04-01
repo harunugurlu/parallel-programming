@@ -32,10 +32,10 @@ int consumedItems[100] = {0};
 
 void* producer(void* args) {
 
-    for(int i = 0; i < MAX_ITEMS / (THREAD_NUM / 2); ++i) {
+    for(int i = 0; i < MAX_ITEMS / (THREAD_NUM / 2); ++i) { // In order to equally divide the work among the threads
         int x = rand() % 100;
 
-        sem_wait(&semEmpty);
+        sem_wait(&semEmpty); // Producers will wait for at least 1 open spot
         pthread_mutex_lock(&mutexBuffer);
         if(count < bufferSize) {
             buffer[in] = x;
@@ -49,8 +49,8 @@ void* producer(void* args) {
 }
 
 void* consumer(void* args) {
-    int thread_id = *(int*)args; // Cast and dereference the argument to use it as an integer.
-    for(int i = 0; i < MAX_ITEMS / (THREAD_NUM / 2); ++i) {
+    int thread_id = *(int*)args;
+    for(int i = 0; i < MAX_ITEMS / (THREAD_NUM / 2); ++i) { // In order to equally divide the work among the threads
         sem_wait(&semFull); // Consumers will wait for at least 1 open spot
         pthread_mutex_lock(&mutexBuffer);
         if(count > 0) {
