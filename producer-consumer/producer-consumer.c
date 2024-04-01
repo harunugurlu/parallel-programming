@@ -14,8 +14,8 @@
 #include <semaphore.h>
 
 
-#define THREAD_NUM 64
-#define MAX_ITEMS 1000000 // Total items to produce and consume
+#define THREAD_NUM 16
+#define MAX_ITEMS 100000 // Total items to produce and consume
 
 sem_t semFull;
 sem_t semEmpty;
@@ -37,12 +37,9 @@ void* producer(void* args) {
 
         sem_wait(&semEmpty); // Producers will wait for at least 1 open spot
         pthread_mutex_lock(&mutexBuffer);
-        if(count < bufferSize) {
-            buffer[in] = x;
-            in = (in + 1) % bufferSize;
-            count++;
-            producedItems[x]++;
-        }
+        buffer[in] = x;
+        in = (in + 1) % bufferSize;
+        producedItems[x]++;
         pthread_mutex_unlock(&mutexBuffer);
         sem_post(&semFull);
     }
@@ -53,12 +50,9 @@ void* consumer(void* args) {
     for(int i = 0; i < MAX_ITEMS / (THREAD_NUM / 2); ++i) { // In order to equally divide the work among the threads
         sem_wait(&semFull); // Consumers will wait for at least 1 open spot
         pthread_mutex_lock(&mutexBuffer);
-        if(count > 0) {
-            int y = buffer[out];
-            out = (out+1) % bufferSize;
-            count--;
-            consumedItems[y]++;
-        }
+        int y = buffer[out];
+        out = (out+1) % bufferSize;
+        consumedItems[y]++;
         pthread_mutex_unlock(&mutexBuffer);
         sem_post(&semEmpty);
         //sleep(1);
