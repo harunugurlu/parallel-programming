@@ -15,17 +15,20 @@
 
 
 #define THREAD_NUM 64
-#define MAX_ITEMS 500000 // Total items to produce and consume
+#define MAX_ITEMS 1000000 // Total items to produce and consume
 
 sem_t semFull;
 sem_t semEmpty;
-pthread_mutex_t mutexBuffer;
+pthread_mutex_t mutexBuffer; // To prevent race conditions when accessing the shared buffer.
 
 int buffer[10];
 int bufferSize = (sizeof(buffer) / sizeof(int));
 int in = 0;
 int out = 0;
 int count = 0;
+
+int producedItems[100] = {0};
+int consumedItems[100] = {0};
 
 void* producer(void* args) {
 
@@ -37,8 +40,8 @@ void* producer(void* args) {
         if(count < bufferSize) {
             buffer[in] = x;
             in = (in + 1) % bufferSize;
-            // printf("I sent: %d\n", x);
             count++;
+            producedItems[x]++;
         }
         pthread_mutex_unlock(&mutexBuffer);
         sem_post(&semFull);
@@ -46,15 +49,15 @@ void* producer(void* args) {
 }
 
 void* consumer(void* args) {
-     int thread_id = *(int*)args; // Cast and dereference the argument to use it as an integer.
+    int thread_id = *(int*)args; // Cast and dereference the argument to use it as an integer.
     for(int i = 0; i < MAX_ITEMS / (THREAD_NUM / 2); ++i) {
         sem_wait(&semFull); // Consumers will wait for at least 1 open spot
         pthread_mutex_lock(&mutexBuffer);
         if(count > 0) {
             int y = buffer[out];
-            // printf("Count: %d Thread %d got: %d\n", count, thread_id, y);
             out = (out+1) % bufferSize;
             count--;
+            consumedItems[y]++;
         }
         pthread_mutex_unlock(&mutexBuffer);
         sem_post(&semEmpty);
@@ -101,6 +104,12 @@ int main(int argc, char* argv[]) {
             perror("Thread join failed");
         }
     }
+    for(int i = 0; i < 100; i++) {
+        if(producedItems[i] != consumedItems[i]) {
+            printf("Mismatch found for item %d: Produced %d, Consumed %d\n", i, producedItems[i], consumedItems[i]);
+            // Handle the error appropriately
+    }
+}
 
     clock_gettime(CLOCK_MONOTONIC, &end); // End timing
 
@@ -112,4 +121,6 @@ int main(int argc, char* argv[]) {
     sem_destroy(&semEmpty);
     sem_destroy(&semFull);
     pthread_mutex_destroy(&mutexBuffer);
+    
+    return 0;
 }
